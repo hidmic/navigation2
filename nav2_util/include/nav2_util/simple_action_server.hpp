@@ -106,7 +106,7 @@ public:
 
   void handle_accepted(const std::shared_ptr<rclcpp_action::ServerGoalHandle<ActionT>> handle)
   {
-    std::lock_guard<std::recursive_mutex> lock(update_mutex_);
+    std::unique_lock<std::recursive_mutex> lock(update_mutex_);
     debug_msg("Receiving a new goal");
 
     if (is_active(current_handle_) || is_running()) {
@@ -131,6 +131,7 @@ public:
       current_handle_ = handle;
 
       // Return quickly to avoid blocking the executor, so spin up a new thread
+      lock.unlock();  // Avoid deadlock with previously running thread, if any
       debug_msg("Executing goal asynchronously.");
       execution_future_ = std::async(std::launch::async, [this]() {work();});
     }
